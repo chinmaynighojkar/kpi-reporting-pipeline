@@ -1,3 +1,4 @@
+# Re-saved to force GitHub Actions to (re-)register this workflow.
 name: Daily KPI Pipeline
 
 on:
