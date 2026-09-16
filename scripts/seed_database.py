@@ -18,8 +18,8 @@ from kpi_pipeline import generator, transform  # noqa: E402
 from kpi_pipeline.db import get_connection  # noqa: E402
 from kpi_pipeline.generator import GUEST_EMAIL, OrderLineRef  # noqa: E402
 
-START_DATE = dt.date(2025, 3, 1)
-END_DATE = dt.date(2026, 9, 14)
+START_DATE = generator.DATASET_START_DATE
+END_DATE = generator.DATASET_END_DATE
 SEED = 20260916
 
 

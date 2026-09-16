@@ -70,9 +70,14 @@ MARKETING_ANOMALY_WINDOW_DAYS = 84
 MARKETING_ANOMALY_MULTIPLIER = 2.6
 
 # --- Anomaly 3: Finance/Ops / Electronics defect return spike --------------
+# Fixed calendar dates, not "N days before end_date": this anomaly models a
+# resolved past incident (a defect batch), not an ongoing state. Using a
+# fixed window means daily incremental appends (Phase 3) correctly stop
+# reproducing it once real time moves past RETURNS_ANOMALY_ORDER_END,
+# instead of the spike looking permanent forever.
 RETURNS_ANOMALY_CATEGORY = "Electronics"
-RETURNS_ANOMALY_WINDOW_START_DAYS = 70  # order placed 15-70 days before end_date
-RETURNS_ANOMALY_WINDOW_END_DAYS = 15
+RETURNS_ANOMALY_ORDER_START = dt.date(2026, 7, 6)   # DATASET_END_DATE - 70 days
+RETURNS_ANOMALY_ORDER_END = dt.date(2026, 8, 30)    # DATASET_END_DATE - 15 days
 BASE_RETURN_RATE = 0.03
 ANOMALY_RETURN_RATE = 0.16
 RETURN_LAG_MIN_DAYS = 5
@@ -83,6 +88,11 @@ N_CUSTOMERS = 3000
 BASE_ORDERS_PER_DAY = 28
 
 GUEST_EMAIL = "guest-checkout@kpi-pipeline.local"
+
+# Shared with scripts/seed_database.py and scripts/run_pipeline.py so the
+# growth-curve/anomaly-decay math has one source of truth for "day zero."
+DATASET_START_DATE = dt.date(2025, 3, 1)
+DATASET_END_DATE = dt.date(2026, 9, 14)
 
 
 @dataclass
@@ -312,10 +322,9 @@ def generate_raw_returns_rows(
 ) -> list[dict]:
     rows = []
     for ref in order_line_refs:
-        days_before_end = (end_date - ref.order_date).days
         in_anomaly_window = (
             ref.category == RETURNS_ANOMALY_CATEGORY
-            and RETURNS_ANOMALY_WINDOW_END_DAYS <= days_before_end <= RETURNS_ANOMALY_WINDOW_START_DAYS
+            and RETURNS_ANOMALY_ORDER_START <= ref.order_date <= RETURNS_ANOMALY_ORDER_END
         )
         return_rate = ANOMALY_RETURN_RATE if in_anomaly_window else BASE_RETURN_RATE
         if rng.random() >= return_rate:
