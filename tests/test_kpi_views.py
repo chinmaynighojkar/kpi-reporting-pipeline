@@ -3,6 +3,7 @@
 import os
 
 import pytest
+from psycopg import sql
 
 from kpi_pipeline.db import get_connection
 
@@ -28,7 +29,7 @@ def conn():
 @pytest.mark.parametrize("view", VIEWS)
 def test_view_returns_rows(conn, view):
     with conn.cursor() as cur:
-        cur.execute(f"SELECT COUNT(*) FROM {view}")
+        cur.execute(sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(view)))
         (count,) = cur.fetchone()
     assert count > 0
 

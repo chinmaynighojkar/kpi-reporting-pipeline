@@ -7,6 +7,8 @@ import csv
 import sys
 from pathlib import Path
 
+from psycopg import sql
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from kpi_pipeline.db import get_connection  # noqa: E402
@@ -39,7 +41,10 @@ def main() -> None:
     with get_connection() as conn:
         for name in TABLES_AND_VIEWS:
             with conn.cursor() as cur:
-                cur.execute(f"SELECT * FROM {name}")
+                # Table/view names can't be bound as query parameters (%s); sql.Identifier
+                # is psycopg's safe way to compose an identifier instead of an f-string,
+                # even though this list is hardcoded, not user input.
+                cur.execute(sql.SQL("SELECT * FROM {}").format(sql.Identifier(name)))
                 cols = [c.name for c in cur.description]
                 rows = cur.fetchall()
 

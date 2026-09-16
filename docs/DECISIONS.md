@@ -1,5 +1,40 @@
 # Decisions
 
+## Security review (post-Phase 4)
+Prompted by a direct question about whether this had been security-tested
+-- it hadn't; all 43 tests are correctness tests, not security tests.
+Ran one now that the repo is public and holds a real DB credential path:
+
+- **Credential handling**: `.env` was never committed (checked full git
+  history, not just current `.gitignore` state). `DATABASE_URL` is a
+  GitHub encrypted secret, never printed in scripts or workflow output.
+  Connection uses `sslmode=require&channel_binding=require`.
+- **SQL injection**: all query values go through parameterized psycopg
+  placeholders (`%s`), never string-interpolated. Two places built table/
+  view *names* via f-string (`scripts/export_local_backup.py`,
+  `tests/test_kpi_views.py`) -- not exploitable today since those names
+  come from a hardcoded Python list, never external input, but f-string
+  SQL is the wrong pattern to leave lying around since it's easy to copy
+  into a spot where the input isn't trusted later. Switched both to
+  `psycopg.sql.Identifier`, which is psycopg's actual mechanism for safely
+  composing identifiers (table/column names can't be bound as `%s`
+  parameters at all, so this is the correct fix, not just a comment).
+- **GitHub Actions least privilege**: the workflow had no `permissions:`
+  block, so `GITHUB_TOKEN` defaulted to the repo's read/write setting even
+  though the job never calls the GitHub API (only Postgres). Added
+  `permissions: contents: read`.
+- **GitHub's own scanning**: secret scanning was already on (0 alerts).
+  Dependabot/vulnerability alerts were off -- enabled via API.
+- **Dependency CVEs**: `pip-audit` against the installed environment
+  found no known vulnerabilities in current dependency versions.
+- **Synthetic data**: customer names/emails are Faker-generated, not real
+  PII, so the public repo and CSV exports don't expose anyone's real data.
+
+Not done: dependency versions aren't upper-bounded or lockfiled (`>=`
+only) -- acceptable for a portfolio project's threat model, flagged here
+rather than fixed, since pinning trades security patches for reproducibility
+and this isn't running unattended in a context where that tradeoff matters.
+
 ## GitHub Actions workflow registration quirk
 After pushing `.github/workflows/daily_pipeline.yml` and setting the
 `DATABASE_URL` secret, GitHub reported zero registered workflows for
