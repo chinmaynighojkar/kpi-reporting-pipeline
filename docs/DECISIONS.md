@@ -1,5 +1,17 @@
 # Decisions
 
+## GitHub Actions workflow registration quirk
+After pushing `.github/workflows/daily_pipeline.yml` and setting the
+`DATABASE_URL` secret, GitHub reported zero registered workflows for
+~15 minutes (`gh api .../actions/workflows` returned `total_count: 0`,
+`gh workflow run` 404'd) despite the file being valid YAML on `master`
+and Actions being fully enabled at the repo level. An empty commit
+didn't fix it — an empty commit touches no files, so it gives GitHub's
+indexer nothing new to scan. Pushing an actual content change to the
+workflow file (adding a comment line) did fix it immediately. Recorded
+here since it looks identical to a real Actions/permissions problem
+until you know the fix is "touch the file, not just push."
+
 ## Postgres over SQLite/CSV
 Power BI Desktop has a native Postgres connector, giving a real live connection
 rather than an ODBC workaround. Also makes the "SQL" part of the resume claim
